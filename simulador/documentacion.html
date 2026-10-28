@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Documentación Simulador Cuántico</title>
+
+<style>
+    body {
+        font-family: Arial;
+        margin: 40px;
+    }
+
+    h1 {
+        color: #2c3e50;
+    }
+
+    .modulo {
+        border: 1px solid #ccc;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+
+    .titulo {
+        padding: 10px;
+        background-color: #f4f4f4;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .contenido {
+        display: none;
+        padding: 10px;
+    }
+
+    ul {
+        margin-top: 5px;
+    }
+
+    pre {
+        background: #f4f4f4;
+        padding: 10px;
+    }
+
+    .submodulo {
+        border: 1px solid #ddd;
+        margin-top: 5px;
+        border-radius: 4px;
+    }
+
+    .subtitulo {
+        padding: 8px;
+        background-color: #eaeaea;
+        cursor: pointer;
+        font-size: 14px;
+        margin-bottom: 3px;
+    }
+
+    .subcontenido {
+        display: none;
+        padding: 8px;
+        font-size: 14px;
+    }
+
+    .coste {
+        border: 1px solid #ccc;
+        border-radius: 15px;
+        padding: 10px !important;
+    }
+
+    .titulo::before, .subtitulo::before {
+        content: "> ";
+    }
+
+    .titulo.activo::before, .subtitulo.activo::before {
+        content: "▼ ";
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Simulador Cuántico de estados</h1>
+<p>Documentación básica del proyecto.</p>
+
+<div class="modulo">
+    <div class="titulo" onclick="toggle(this)">Clase: SistemaMezcla</div>
+    <div class="contenido">
+        <p>Clase principal que representa un sistema de estados entrelazados de la forma lista de pares (probabilidad, vector de estados).</p>
+
+        <b>Atributos:</b>
+        <ul>
+            <li><b>_numQbits:</b> Número de qubits de cada estado sistema</li>
+            <li><b>_matrizDensidad:</b> Matriz de densidad del sistema, en formato disperso gracias a scipy.</li>
+        </ul>
+        <b>Modulos:</b>
+
+        <div style="margin-top: 10px;"  class="modulo">
+            <div class="titulo" onclick="toggle(this)">Módulo: Puertas</div>
+            <div class="contenido">
+                <b>Funciones:</b>
+                <div style="margin-top: 10px;"  class="subtitulo" onclick="toggle(this)">
+                    <b>aplicar_puerta(self, GATE, POS_QBITS = [])</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Aplica una puerta GATE a los qubits que estén en POS_QBITS.</p>
+                    <p>En puertas.py puedes implementar las puertas que consideres necesarias de los qubits que consideres necesarios.</p>
+                    <p>Puertas disponibles(IMPLEMENTADAS):</p>
+                    <ul>
+                        <li><b>1 qubit:</b> I, Pauli-X, Pauli-Y, Pauli-Z, HADAMARD, S, √NOT</li>
+                        <li><b>2 qubits:</b> SWAP, CNOT, MCY, MCZ</li>
+                        <li><b>3 qubits:</b> TOFFOLI, FREDKIN</li>
+                    </ul>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo(Sin swaps, para puertas de 1 qubit):</b> Ω(n*2^n); O(4^n) -> El coste mínimo vendría determinado por los n productos de kroneker(para generar OP). Como la OP final tendrá un tamaño 2^n el coste total sería n*2^n.<br>Por otro lado, el coste máximo estaría determinado por la multiplicación de matrices final(Suponiendo una matriz de densidad en la que todos los elementos != 0 -> siendo entonces una matriz densa). De esta manera se nos quedaría un coste de 2^n*2^n = 4^n</p>
+                        <p><b>Tiempo(Con swaps, más de 1 qubit):</b> Ω(n*2^n); O(4^n + m*n*4^n) = O(m*n*4^n), siendo m el número de qubits de la puerta. En el mejor de los casos todos los qubits estarán colocados en la posición correcta y por ende no se harán swaps, quedando el coste igual que el de aplicar una puerta de 1 qubit Ω(n*2^n), suponiendo que la matriz de densidad además es completa o prácticamente dispersa, dejando un coste insignificante a la multiplicación de OP @ matrizDensidad.<br>Por otro lado, el coste mayor se da cuando la matriz de densidad tiene todos los elementos != 0 y la OP también(Suponiendo que crees una OP de n qubits completamente densa, ya que si usas las puertas habítuales esta siempre quedará considerablemente dispersa para n qubits). Para ese caso, el coste iría acotado por la multiplicación OP @ matrizDensidad, que tendría coste (2^n*2^n)*(2^n), quedándonos un coste final de 8^n.</p>
+                        <p><b>Espacio:</b> Ω(2^n); O(4^n) -> Viene determinado por dos factores: el tamaño de la matríz OP qué, en el peor de los casos, tendrá todos sus elementos no nulos y ocupará 4^n(suponiendo que creases tu propia puerta de n qubits completamente densa) y en el mejor de los casos(siendo completamente dispersa) 2^n; y por las matrices temporales creadas durante la multiplicación OP @ matrizDensidad. Aunque OP sea dispersa, si la matriz de densidad es densa, el sistema requiere memoria auxiliar proporcional a 4^n para calcular el resultado temporal.</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>superposicion(self)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Aplica una puerta HADAMARD a cada qubit del sistema poniendo al sistema en superposición.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(n^2*2^n);O(n*4^n) -> Se aplica una puerta de un qubit(con complejidad máxima O(4^n) y mínima Ω(n*2^n)) n veces(se aplica a cada qubit).</p>
+                        <p><b>Espacio:</b> θ(2^n) -> Al ser una matriz que para n qubits(>2) es dispersa al hacer Kronecker con la identidad, el coste en espacio será 2^n. Al ser llamadas a la función el uso de espacio no se acumula(no es n*2^n) </p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>swap_qubits(self, Qi, Qf)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Intercambia el qubit de la posición Qi por el de la posición Qf(El resto de qubits no se ven afectados)</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(1); O(distancia*4^n) = O(n*4^n) -> Si Qi == Qf entonces el coste sería constante, sin embargo para el caso peor(Qf-Qi == n-1, es decir la distancia es máxima entre posición inicial y final) el coste sería (n-1)*CosteSwapAdy = n*(4^n) = n*4^n</p>
+                        <p><b>Espacio:</b> θ(2^n) -> El coste en espacio vendrá determinado por el coste en espacio de la función _swaps_qubits_ady: θ(2^n).</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>_swap_qubits_ady(self, Qi, Qf)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Intercambia los qubits adyacentes de las posiciones Qi y Qf</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(n*2^n); O(4^n) -> El coste mínimo viene limitado por los n productos de Kronecker(para generar OP). Como la OP final tendrá un tamaño 2^n el coste mínimo total sería n*2^n<br>Por otro lado, para calcular el coste máximo tenemos que considerar que la matriz de densidad no tiene ningún elemento == 0, operando como si fuera una matriz densa en vez de una dispersa. Para ese caso el coste estaría acotado por la multiplicación de matrices(@) que sería 2^n(los elementos de OP) * 2^n(los elementos en cada fila de la matriz de densidad)</p>
+                        <p><b>Espacio:</b> θ(2^n) -> Viene determinado por el tamaño de la matriz OP, que es completamente dispersa, teniendo unicamente 2^n elementos no nulos. Si no usasemos scipy el coste aumentaría a 2^2n</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="modulo">
+            <div class="titulo" onclick="toggle(this)">Módulo: Medición</div>
+            <div class="contenido">
+                <b>Funciones:</b>
+                <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+                    <b>medir_qubit(self, pos_qubit=0, base_medicion=BASE_Z)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Gracias a esta función se puede medir un qubit en la base que queramos usar.</p>
+                    <p>Como se trata de un sistema de estados mezcla, usamos la formula p(M ({q<sub>i</sub>}) = v) = tr(P<sub>i,v</sub> |Ψi); ρ = (P<sub>i,v'</sub>ρP<sub>i,v'</sub>) / (p (M ({q<sub>i</sub>}) = v')), , donde v es el valor para el que se calcula la probabilidad y v' es el resultado de la medida.</p>
+                    <p>En bases.py puedes implementar las bases que consideres necesarias (se implementan de la forma lista de puertas necesarias a aplicar antes de medir, como por ejemplo con base X que se aplicarán puertas hadamards a cada qubit que vayamos a medir)</p>
+                    <p><b>Bases disponibles(IMPLEMENTADAS):</b></p>
+                    <ul>
+                        <li><b>BASE Z:</b> No es necesario aplicar ninguna puerta.</li>
+                        <li><b>BASE X:</b> Se aplica puerta de HADAMARD y luego se mide en base Z.</li>
+                        <li><b>BASE Y:</b> Se aplica puerta S<sup>†</sup>, luego puerta HADAMARD y luego ya mides</li>
+                    </ul>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(2^n); O(4^n) -> El coste minimo viene determinado por la operación <i>Piv @ rho</i>, suponiendo que la matriz de densidad sea plenamente dispersa. Para esa situación el coste mínimo sería 2^n elementos de Piv * 1(ese es el coste de la multiplicación de matrices).<br>Por el contrario, para el coste mayor suponemos que rho es completamente densa(tiene 2^n*2^n elementos no nulos). Para ese caso el coste de la multiplicación de matrices pasaría a ser O(2^n*2^n) = O(4^n)(Sabemos que piv siempre va a ser diagonal -> dispersa, sino sería un coste de 8^n)</p>
+                        <p><b>Espacio:</b> Ω(2^n) O(4^n) -> El coste menor viene determinado por el tamaño de prob_0, que como hemos visto antes es 2^n porque es completamente disperso.<br>El coste máximo viene determinado por el tamaño de las matrices temporales generadas con la multiplicación de matrices. Suponiendo una matriz de densidad completamente densa el tamaño de esa matriz temporal sería 2^n*2^n = 4^n</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>medir(self, base_medicion=BASE_Z)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Esta función nos permite medir todos los qubits del sistema en la base que queramos (Consultar <i>medir_qubit</i> para más información)</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(n*2^n); O(n*4^n); -> El coste viene determinado por realizar n veces la función <i>medir_qubit</i> que tiene coste Ω(2^n); O(4^n).</p>
+                        <p><b>Espacio:</b> Ω(2^n) O(4^n) -> El espacio no se acumula así que viene determinado por el espacio necesario en <i>medir_qubit</i></p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>_generar_proyector(self, pos_qubit, valor)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Genera el operador de proyección global P para un qubit específico en un estado/valor determinado (0 o 1).</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(1); O(n*2^n) -> El coste mínimo viene determinado por si el proyector ya está generado previamente(si se ha llamado a la función _generar_proyector con anterioridad no vamos a generar el proyector siempre para un mismo valor). El coste máximo viene dado por el conjunto de productos tensoriales que se realizarán, que serían en total n(por el número de qubits) con un coste máximo de 2^n(Al tratarse de una matriz dispersa con solo 2^n elementos no nulos), quedandonos un coste máximo de O(n*2^n)</p>
+                        <p><b>Espacio:</b> Ω(1); θ(2^n) -> Para el caso en el que ya está generado el proyector y guardado en self.PX no se necesitaría nada de espacio. <br>Por otro lado, el coste máximo vendrá limitado por el tamaño de res resultante, que como hemos visto antes tendrá 2^n elementos no nulos.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modulo">
+            <div class="titulo" onclick="toggle(this)">Módulo: Otros</div>
+            <div class="contenido">
+                <b>Funciones:</b>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>matriz_densidad(self)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Devuelve la matriz de densidad del sistema actual</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(4^n) -> El coste viene determinado por la operación self._matrizDensidad.toarray() que, como va a generar un matriz de 2^n*2^n tiene ese mismo coste.</p>
+                        <p><b>Espacio:</b> θ(4^n) -> También está determinado por el tamaño de la matriz densa resultante(2^n*2^n)</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>entropia_von_neuman(self)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Calcula la entropía de Von Neumann del sistema, que es una medida del grado de entrelazamiento de los estados.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(2^3n) -> El coste de la llamada <i>self.matriz_densidad()</i> ya es θ(4^n), sin embargo el coste viene dado por la función logm que tiene coste θ((2^n)^3), o por el coste de rho @ logm(rho) que igual.</p>
+                        <p><b>Espacio:</b> θ(4^n) -> Viene determinado por el tamaño de la matriz de densidad que, siendo densa, necesitamos almacenar 2^n*2^n elementos</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>print_matriz_densidad(self)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Imprime la matriz de densidad de una manera "visual".</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(4^n) -> El coste de la llamada <i>self.matriz_densidad()</i> ya es θ(4^n), y el np.round recorre también cada elemento, así que tendrá coste 4^n, acotado por cualquiera de las 2 llamadas.</p>
+                        <p><b>Espacio:</b> θ(4^n) -> Determinado por el tamaño de la matriz densa generada.</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>print_matriz_densidad_dispersa(self)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Imprime la matriz de densidad dispersa de una manera "visual".</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(1); O(4^n) -> El print recorrerá cada elemento de la matriz de densidad dispersa. En el peor de los casos la matriz de densidad tendría todos los elementos != 0, teniendo el print un coste de 4^n. En el mejor de los casos la matriz de densidad tendría un único valor != 0 teniendo un coste Ω(1)</p>
+                        <p><b>Espacio:</b> θ(1) -> No se necesita ningún espacio extra ya que está ya guardado como atributo</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <b>Funciones:</b>
+        <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+            <b>__init__(self, numQbits = 1, lista = None)</b>
+        </div>
+        <div class="subcontenido">
+            <p>Inicia el sistema de numQbits qubits con una lista por defecto de 1 único estado con probabilidad 100. Guardando una matriz de densidad con un único elemento != 0.</p>
+            <p>Requisitos:</p>
+            <ul>
+                <li>En caso de pasarse una lista por defecto tiene que ser de la forma [[prob1, vEstado1],[prob2, vEstado2]...]</li>
+                <li>Todos los estados que pertenezcan al sistema tienen que tener el mismo número de qubits</li>
+                <li>La suma de todas las probabilidades tiene que ser igual a 100</li>
+            </ul>
+            <div class="coste">
+                <b>COSTE</b>
+                <p><b>Tiempo(para <i>lista</i> == None):</b> θ(1) -> Se crea una matriz dispersa de un único elemento != 0 por ende el coste es constante</p>
+                <p><b>Tiempo(para <i>lista</i> != None):</b> θ(m*4^n), siendo m el número de estados de mezclados. Por cada estado se realizauna multiplicación de matrices no dispersas de tamaño 2^n*1, teniendo un coste final m*4^n</p>
+                <p><b>Espacio:</b> Ω(1); θ(4^n) -> Viene determinado por el tamaño de matriz de densidad no dispersa rho que tiene 4^n elementos.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modulo">
+    <div class="titulo" onclick="toggle(this)">Clase: SistemaBasico</div>
+    <div class="contenido">
+        <p>Clase principal que representa un sistema de la forma vector de estados.</p>
+
+        <b>Atributos:</b>
+        <ul>
+            <li><b>_numQbits:</b> Número de qubits de cada estado sistema</li>
+            <li><b>_estados:</b> Vector de estados(podría verse como una matríz (n**2, 1))</li>
+        </ul>
+        <b>Modulos:</b>
+
+        <div style="margin-top: 10px;"  class="modulo">
+            <div class="titulo" onclick="toggle(this)">Módulo: Puertas</div>
+            <div class="contenido">
+                <b>Funciones:</b>
+                <div style="margin-top: 10px;"  class="subtitulo" onclick="toggle(this)">
+                    <b>aplicar_puerta(self, GATE, POS_QBITS = [])</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Aplica una puerta GATE a los qubits que estén en POS_QBITS.</p>
+                    <p>En puertas.py puedes implementar las puertas que consideres necesarias de los qubits que quieras.</p>
+                    <p>Puertas disponibles(IMPLEMENTADAS):</p>
+                    <ul>
+                        <li><b>1 qubit:</b> I, Pauli-X, Pauli-Y, Pauli-Z, HADAMARD, S, √NOT</li>
+                        <li><b>2 qubits:</b> SWAP, CNOT, MCY, MCZ</li>
+                        <li><b>3 qubits:</b> TOFFOLI, FREDKIN</li>
+                    </ul>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo(Sin swaps, para puertas de 1 qubit):</b> θ(n*2^n) -> El coste viene determinado por n productos tensoriales de coste máximo 2^n(número de elementos no nulos de OP).</p>
+                        <p><b>Tiempo(Con swaps, más de 1 qubit):</b> Ω(n*2^n); O(4^n) -> El coste mínimo vendría determinado por los n productos de kronecker, como hemos visto antes. Para que este sea el coste mínimo, los qubits tienen que estar correctamente colocados cada uno en su posición final(haciendo el búcle de los swaps en coste m, siendo m el número de qubits de la puerta).<br>Por otro lado, el coste máximo viene determinado por la multiplicación de matrices @. Para que se de este coste, tanto la OP, como self._estados tienen que tener todos los elementos != 0(Suponiendo que crees una OP de n qubits completamente densa, ya que si usas las puertas habítuales esta siempre quedará considerablemente dispersa para n qubits), generando un coste así de 2^n*2^n*1 = 4^n</p>
+                        <p><b>Espacio:</b> Ω(2^n); O(4^n) -> Viene determinado por el tamaño de la matriz OP, que puede ir desde 2^n, siendo completamente dispersa, hasta 4^n suponiendo una OP completamente densa.</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>superposicion(self)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Aplica una puerta HADAMARD a cada qubit del sistema poniendo al sistema en superposición.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(n^2*2^n) -> Se aplica una puerta de un qubit(con complejidad O(n*2^n)) n veces(se aplica a cada qubit).</p>
+                        <p><b>Espacio:</b> θ(2^n) -> Mismo que aplicar puerta(Para un qubit la OP solo puede ocupar 2^n). Se hacen n llamadas a esa función pero el tamaño no se acumula así que no es n*2^n.</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>swap_qubits(self, Qi, Qf)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Intercambia el qubit de la posición Qi por el de la posición Qf(El resto de qubits no se ven afectados)</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(1); O(distancia*n*2^n) = O(n^2*2^n) -> Para el caso de Qi == Qf el coste sería constante. Para el resto de situaciones el coste sería distancia*costeSwapAdy, siendo distancia como máximo n-1. Es por esto que el coste máximo sería n^2*2^n.</p>
+                        <p><b>Espacio:</b> θ(2^n) -> Mismo que aplicar puerta(Para un qubit la OP solo puede ocupar 2^n). Se hacen n llamadas a esa función pero el tamaño no se acumula así que no es n*2^n.</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>_swap_qubits_ady(self, Qi, Qf)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Intercambia los qubits adyacentes de las posiciones Qi y Qf</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(n*2^n) -> El coste va a venir siempre acotado por los n productos de Kronecker de coste máximo 2^n</p>
+                        <p><b>Espacio:</b> θ(2^n) -> Determinado por el tamaño de OP que, al usar scipy, será únicamente 2^n, siendo completamente dispersa.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modulo">
+            <div class="titulo" onclick="toggle(this)">Módulo: Medición</div>
+            <div class="contenido">
+                <b>Funciones:</b>
+                <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+                    <b>medir_qubit(self, pos_qubit=0, base_medicion=BASE_Z) -> Int</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Gracias a esta función se puede medir un qubit en la base que queramos usar.</p>
+                    <p>Al medir el qubit el sistema colapsará y dejará únicamente aquellos estados en los que ese qubit valga lo que ha medido.</p>
+                    <p>En bases.py puedes implementar las bases que consideres necesarias (se implementan de la forma lista de puertas necesarias a aplicar antes de medir)</p>
+                    <p><b>Bases disponibles(IMPLEMENTADAS):</b></p>
+                    <ul>
+                        <li><b>BASE Z:</b> No es necesario aplicar ninguna puerta.</li>
+                        <li><b>BASE X:</b> Se aplica puerta de HADAMARD y luego se mide en base Z.</li>
+                        <li><b>BASE Y:</b> Se aplica puerta Sdg, luego puerta HADAMARD y luego ya mides</li>
+                    </ul>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo(BASE_Z):</b> Ω(1); O(m*n*2^n) -> El coste de recorrer las probabilidades será 1 en el mejor de los casos ya que solo se guardan los estados con valor != 0(matriz dispersa), límitando el coste mínimo. El coste superior viene determinado por aplicar m puertas con coste n*2^n.</p>
+                        <p><b>Espacio:</b> θ(2^n) -> Determinado por el vector de probabilidades que se guarda en probs.</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>medir(self, base_medicion=BASE_Z) -> [Int]</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Esta función nos permite medir todos los qubits del sistema en la base que queramos (Consultar <i>medir_qubit</i> para más información)</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo(BASE_Z):</b> Ω(n); O(m*n^2*2^n) -> El coste viene definido por hacer n veces medicion de 1 qubit, que tiene coste Ω(1); O(m*n*2^n).</p>
+                        <p><b>Espacio:</b> θ(2^n) -> mismo espacio requerido/consumido que <i>medir_qubit</i></p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>colapsar(self, pos_qubit=0, valor=0)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Colapsa el estado en el valor especificado (0 o 1) del qubit <i>pos_qubit</i>. Todos los componentes que no coinciden con <i>valor</i> se eliminan y el estado resultante se normaliza.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(1); O(2^n) -> Al usar mask, numpy opera sobre el array filas que, si el sistema es muy disperso, el coste podría llegar a ser 1 en el mejor de los casos. En el peor de los casos el coste sería 2^n(suponiendo que todas las filas tengan amplitud)</p>
+                        <p><b>Espacio:</b> Ω(1); O(2^n) -> El tamaño dependerá del tamaño de filas o datos, que sería, en el peor de los casos 2^n y en el mejor de los casos 1.</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>print_probabilidades(self)</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Imprime la probabilidad de que al medir salga cada estado en forma de array.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(1); O(2^n) -> Viene dado por el número de estados con probabilidad del sistema(siendo mínimo 1 máximo 2^n), ya que recorremos estos uno a uno y los imprimimos.</p>
+                        <p><b>Espacio:</b> Ω(1); O(2^n) -> Igual que el tiempo.</p>
+                    </div>
+                </div>
+                <div class="subtitulo" onclick="toggle(this)">
+                    <b>_probabilidades(self) -> [Float]</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Devuelve la probabilidad de que al medir salga cada estado en forma de array.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(1); O(2^n) -> Se recorre una vez cada elemento del vector de estados(como máximo 2^n, como mínimo 1 suponiendo máxima dispersión)</p>
+                        <p><b>Espacio:</b> Ω(1); O(2^n) -> Tamaño de la solución. Como se guardan solo los estados con probabilidad, el tamaño máximo puede ser 2^n(considerando máxima superposición) y el mínimo 1.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modulo">
+            <div class="titulo" onclick="toggle(this)">Módulo: Representación</div>
+            <div class="contenido">
+                <b>Funciones:</b>
+                <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+                    <b>print_estado(self, numDecimales = 5, prev = "")</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Imprime el estado en forma de suma de kets.</p>
+                    <p>La función permite editar el número de decimales de la amplitud y el texto previo a cada línea de texto(ejemplos en examples.py)</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> Ω(1); O(2^n) -> El coste viene determinado por recorrer el conjunto de estados con amplitud(Como mínimo tiene que haber 1, dejando coste mínimo constante; y como mucho habrá 2^n elementos)</p>
+                        <p><b>Espacio:</b> Ω(1); O(2^n) -> El coste en espacio vendrá determinado por el tamaño de filas(que guarda los índices de todos los estados guardados en la matriz dispersa). Como mínimo ocupará 1 y como máximo 2^n(Suponiendo máxima superposición)</p>
+                    </div>
+                </div>
+                <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+                    <b>get_estados(self) -> [ComplexNumber]</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Devuelve el vector de estados.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(1)</p>
+                        <p><b>Espacio:</b> θ(1)/p>
+                    </div>
+                </div>
+                <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+                    <b>get_numQbits(self) -> Int</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Devuelve el número de qubits del sistema.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(1) -> Devolver un int guardado tiene coste en tiempo y espacio θ(1).</p>
+                        <p><b>Espacio:</b> θ(1)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modulo">
+            <div class="titulo" onclick="toggle(this)">Módulo: Esfera de Bloch</div>
+            <div class="contenido">
+                <b>Funciones:</b>
+                <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+                    <b>angulos_bloch(self) -> Float, Float</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Devuelve los ángulos theta y phi necesarios para representar el qubit en la esfera de Bloch. Solo se podrá representar si el sistema cuenta con un único qubit, sino se lanzará una excepción.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(1) -> Todo las operaciones realizadas en esta función son constantes.</p>
+                        <p><b>Espacio:</b> θ(1) -> Igual que pasa con el tiempo.</p>
+                    </div>
+                </div>
+                <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+                    <b>coords_bloch(self) -> Int, Int, Int</b>
+                </div>
+                <div class="subcontenido">
+                    <p>Devuelve las coordenadas del qubit 0 del sistema en la esfera de Bloch. Solo se podrá acudir a esta función si el sistema cuenta con un único qubit, sino se lanzará una excepción.</p>
+                    <div class="coste">
+                        <b>COSTE</b>
+                        <p><b>Tiempo:</b> θ(2) = θ(1) -> Todo las operaciones realizadas en esta función son constantes.</p>
+                        <p><b>Espacio:</b> θ(1) -> Igual que pasa con el tiempo.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <b>Funciones:</b>
+        <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+            <b>__init__(self, numQbits = 1, estadoInicial = None)</b>
+        </div>
+        <div class="subcontenido">
+            <p>Inicia el sistema de numQbits qubits con un estado inicial(vector de estados) por defecto.</p>
+            <p>Requisitos:</p>
+            <ul>
+                <li>En caso de pasarse un vector de estados por defecto tiene que ser de tamaño 2^n(número de qubits), sino el número de qubits pasado como argunmento se ignorará.</li>
+                <li>El vector de estados ha de estar normalizado correctamente, en cualquier otro caso lanzará excepción.</li>
+            </ul>
+            <div class="coste">
+                <b>COSTE</b>
+                <p><b>Tiempo(para <i>estadoInicial</i> = None):</b> θ(1) -> El coste de crear una matriz dispersa(csr) de un único elemento no nulo es constante.</p>
+                <p><b>Tiempo(para <i>estadoInicial</i> != None):</b> θ(2^n) -> Se comprueba que el estado esté correctamente normalizado con np.linalg.norm que recorre todos los elementos(2^n).</p>
+                <p><b>Espacio:</b>  Ω(1); O(2^n) -> Para <i>estadoInicial</i> != None se requerirá de una matriz de 2^n*1 como máximo, quedándonos ese coste máximo.<br> Por el contrario, para <i>estadoInicial</i> == None, se almacenará un único elemento, quedandonos coste constante.</p>
+            </div>
+        </div>
+        <div style="margin-top: 10px;" class="subtitulo" onclick="toggle(this)">
+            <b>producto_tensorial(self, sistema2) -> Sistema</b>
+        </div>
+        <div class="subcontenido">
+            <p>Devuelve un sistema que será el resultado del producto tensorial de 2 sistemas(self y sistema2). El orden es self(x)sistema2</p>
+            <div class="coste">
+                <b>COSTE</b>
+                <p><b>Tiempo:</b> Ω(1); O(2^(n+m)) -> El coste viene marcado por el tiempo de hacer el producto de kronecker, que viene determinado por la multiplicación de los elementos no nulos. EN el peor de los casos ambos sistemas tendrán todos sus elementos no nulos, quedandonos un coste de 2^n*2^m, siendo m el número de estados posibles del sistema 2. En el mejor de los casos el coste sería 1, teniendo ambos sistemas con un único elemento no nulo.</p>
+                <p><b>Espacio:</b> θ(2^(n+m))</p>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- NOTAS -->
+<div class="modulo">
+    <div class="titulo" onclick="toggle(this)">Notas - LEER PRIMERO</div>
+    <div class="contenido">
+        <ul>
+            <li><b>Contexto previo: </b> El proyecto consta de 2 clases principales: <i>SistemaBasico</i> y <i>SistemaMezcla</i>, ambas especificadas arriba. Cualquiera función con objetivo de modificar el estado del sistema directamente lo modificará en el objeto ya definido, no devolverá uno con el resultado(medición, aplicado una puerta...).</li>
+            <li style="margin-top: 15px;"><b>Convención de bits:</b> El sistema utiliza una ordenación Big Endian por lo que cualquier puerta que se desee representar ha de seguir este estándar para asegurar la coherencia de las operaciones.</li>
+            <li style="margin-top: 15px;"><b>Ejemplos de uso:</b> Dentro del proyecto se proporciona un examples.py donde se puede ver ejemplos de uso del simulador(Bernstein-Vazirani, Deutsch Jozsa, Von Neumann, Toffoli...).</li>
+            <li style="margin-top: 15px;"><b>Costes:</b> Los costes de cada función están detallados en esta documentación. Siempre consideramos n como el número de qubits para la definición de estos costes. Sí se usa alguna incógnita más, esta será definida en ese momento y servirá solo para ese coste determinado.<br>Para cuando existe coste computacional theta no se indican ni coste Omega ni coste Big O(Cota inferior y superior), ya que estos coinciden; únicamente se indica coste Theta.</li>
+            <li style="margin-top: 15px;"><b>Funciones privadas:</b> Las funciones que cuyo nombre comienza con un guión bajo están pensadas como funciones privadas. Su uso directo no es recomendable, ya que están diseñadas para ser invocadas internamente por sus respectivas funciones públicas, las cuales garantizan la seguridad y el flujo correcto de los datos.</li>
+            <li style="margin-top: 15px;"><b>Librerias necesarias:</b> numpy, scipy</li>
+            <li style="margin-top: 15px;"><b>Visualización:</b> Para la representación de la esfera de Bloch se ha usado un archivo externo b.py desarrollado por Hernán Indibil De La Cruz.</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    function toggle(element) {
+        const contenido = element.nextElementSibling;
+        contenido.style.display = (contenido.style.display === "block") ? "none" : "block";
+        contenido.classList.toggle("activo");
+        element.classList.toggle("activo");
+    }
+</script>
+
+</body>
+</html>
